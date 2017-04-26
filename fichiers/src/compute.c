@@ -49,13 +49,52 @@ unsigned opencl_used [] = {
 
 unsigned compute_v0 (unsigned nb_iter)
 {
-
+int nbVoisinesViv;
+bool changed;
   for (unsigned it = 1; it <= nb_iter; it ++) {
-    for (int i = 0; i < DIM; i++)
-      for (int j = 0; j < DIM; j++)
-	next_img (i, j) = cur_img (j, i);
-    
+	  changed =false;
+    for (int i = 1; i < DIM-1; i++)
+      for (int j = 1; j < DIM-1; j++){
+		nbVoisinesViv=0;
+		if(cur_img(i,j-1) == 0xFFFF00FF)
+			nbVoisinesViv++;
+		if(cur_img(i+1,j-1) == 0xFFFF00FF)
+			nbVoisinesViv++;
+		if(cur_img(i+1,j) == 0xFFFF00FF)
+			nbVoisinesViv++;
+		if(cur_img(i+1,j+1) == 0xFFFF00FF)
+			nbVoisinesViv++;
+		if(cur_img(i,j+1) == 0xFFFF00FF)
+			nbVoisinesViv++;
+		if(cur_img(i-1,j+1) == 0xFFFF00FF)
+			nbVoisinesViv++;
+		if(cur_img(i-1,j) == 0xFFFF00FF)
+			nbVoisinesViv++;
+		if(cur_img(i-1,j-1) == 0xFFFF00FF)
+			nbVoisinesViv++;
+			
+		printf("DIM : %d / case : %d,%d / nbVoisinesViv : %d\n",DIM,i,j,nbVoisinesViv);
+		if(cur_img(i,j)== 0x0 && nbVoisinesViv==3){
+			next_img(i,j)=0xFFFF00FF;
+			changed = true;
+		}
+		if(cur_img(i,j)== 0x0 && nbVoisinesViv!=3){
+			next_img(i,j)=0x0;
+			changed = false;
+		}
+		if(cur_img(i,j)== 0xFFFF00FF && (nbVoisinesViv!=2 && nbVoisinesViv!=3)){
+			next_img(i,j)=0x0;
+			changed = true;
+		}
+		if(cur_img(i,j)== 0xFFFF00FF && (nbVoisinesViv==2 || nbVoisinesViv==3)){
+			next_img(i,j)=0xFFFF00FF;
+			changed = false;
+		}
+	  }
+	  if(changed)
     swap_images ();
+    else
+		return nb_iter;
   }
   // retourne le nombre d'étapes nécessaires à la
   // stabilisation du calcul ou bien 0 si le calcul n'est pas
