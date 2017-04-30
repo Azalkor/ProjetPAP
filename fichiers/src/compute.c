@@ -174,18 +174,20 @@ int** tabTilesToMove;
 int** tabTilesHaveMoved;
 // Renvoie le nombre d'itérations effectuées avant stabilisation, ou 0
 unsigned compute_v2(unsigned nb_iter){
-  initTabsTiles();
-  for(int i = 0; i < DIM; i+=sizeTiles){
-    for(int j = 0; j < DIM; j+=sizeTiles){
-      if(tabTilesToMove[i/NBTILES][j/NBTILES]){
-	tabTilesHaveMoved[i/NBTILES][j/NBTILES] = 0;
-	for(int x = i; x < i + sizeTiles; x++){
-	  for(int y = i; y < j + sizeTiles; y++){
-	    majImg(x, y, countAlive(x, y));
+  for (unsigned it = 1; it <= nb_iter; it++) {
+    initTabsTiles();
+    for(int i = 0; i < DIM; i+=sizeTiles){
+      for(int j = 0; j < DIM; j+=sizeTiles){
+	if(tabTilesToMove[i/NBTILES][j/NBTILES]){
+	  tabTilesHaveMoved[i/NBTILES][j/NBTILES] = 0;
+	  for(int x = i; x < i + sizeTiles; x++){
+	    for(int y = i; y < j + sizeTiles; y++){
+	      majImg(x, y, countAlive(x, y));
+	    }
 	  }
-	}
-	if(cur_img(i, j) != next_img(i, j)){
-	  tabTilesHaveMoved[i/NBTILES][j/NBTILES] = 1;
+	  if(cur_img(i, j) != next_img(i, j)){
+	    tabTilesHaveMoved[i/NBTILES][j/NBTILES] = 1;
+	  }
 	}
       }
     }
@@ -196,19 +198,21 @@ unsigned compute_v2(unsigned nb_iter){
 }
 
 unsigned compute_v2_openmpfor(unsigned nb_iter){
-  initTabsTiles();
+  for (unsigned it = 1; it <= nb_iter; it++) {
+    initTabsTiles();
 #pragma omp parallel for 
-  for(int i = 0; i < DIM; i+=sizeTiles){
-    for(int j = 0; j < DIM; j+=sizeTiles){
-      if(tabTilesToMove[i/NBTILES][j/NBTILES]){
-	tabTilesHaveMoved[i/NBTILES][j/NBTILES] = 0;
-	for(int x = i; x < i + sizeTiles; x++){
-	  for(int y = i; y < j + sizeTiles; y++){
-	    majImg(x, y, countAlive(x, y));
-	  }
+    for(int i = 0; i < DIM; i+=sizeTiles){
+      for(int j = 0; j < DIM; j+=sizeTiles){
+	if(tabTilesToMove[i/NBTILES][j/NBTILES]){
+	  tabTilesHaveMoved[i/NBTILES][j/NBTILES] = 0;
+	  for(int x = i; x < i + sizeTiles; x++){
+	    for(int y = i; y < j + sizeTiles; y++){
+	      majImg(x, y, countAlive(x, y));
+	    }
 	}
-	if(cur_img(i, j) != next_img(i, j)){
+	  if(cur_img(i, j) != next_img(i, j)){
 	  tabTilesHaveMoved[i/NBTILES][j/NBTILES] = 1;
+	  }
 	}
       }
     }
