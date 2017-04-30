@@ -27,7 +27,7 @@ __kernel void transpose (__global unsigned *in, __global unsigned *out)
 unsigned const colorViv = 0xFFFF00FF;
 unsigned const colorMort = 0x0;
 
-__kernel ocl_naif(__global unsigned *in, __global unsigned *out){
+__kernel void ocl_naif(__global unsigned *in, __global unsigned *out){
   int x = get_global_id(0);
   int y = get_global_id(1);
 
