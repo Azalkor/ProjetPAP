@@ -1,4 +1,4 @@
-x__kernel void transpose_naif (__global unsigned *in, __global unsigned *out)
+__kernel void transpose_naif (__global unsigned *in, __global unsigned *out)
 {
   int x = get_global_id (0);
   int y = get_global_id (1);
