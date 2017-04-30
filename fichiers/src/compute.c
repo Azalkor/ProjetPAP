@@ -19,11 +19,13 @@ unsigned compute_v0_openmpfor(unsigned nb_iter);
 unsigned compute_v1_openmpfor(unsigned nb_iter);
 unsigned compute_v2_openmpfor(unsigned nb_iter);
 unsigned compute_v1_openmptask(unsigned nb_iter);
+unsigned compute_v2_openmptask(unsigned nb_iter);
 
 void_func_t first_touch [] = {
   NULL,
   NULL,//first_touch_v1,
   NULL,//first_touch_v2,
+  NULL,
   NULL,
   NULL,
   NULL,
@@ -38,22 +40,25 @@ int_func_t compute [] = {
   compute_v1_openmpfor,
   compute_v2_openmpfor,
   compute_v1_openmptask,
+  compute_v2_openmptask,
 };  //  compute_v3,
 
 char *version_name [] = {
   "Séquentielle de base",
   "Séquentielle tuilée",
   "Séquentielle tuilée (optimisée)",
-  "Séquentielle de base avec OpenMP for",
-  "Séquentielle tuilée avec OpenMP for",
-  "Séquentielle tuilée (optimisée) avec OpenMP for",
-  "Séquentielle tuilée avec OpenMP task",
+  "OpenMP for de base",
+  "OpenMP for tuilée",
+  "OpenMP for tuilée (optimisée)",
+  "OpenMP task tuilée",
+  "OpenMP task tuilée (optimisée)",
 };//  "OpenMP",
 //  "OpenMP zone",
 //  "OpenCL",
 
 
 unsigned opencl_used [] = {
+  0,
   0,
   0,
   0,
@@ -74,6 +79,10 @@ void majImg(int i, int j, int nbVoisinsVivants);
 void majTab();
 void initTabsTiles();
 void task_v1(int i);
+void task_v2(int i);
+void majTabOmpFor();
+void majTabOmpTask();
+void task_omp_task(int x, int y);
 
 unsigned compute_v0 (unsigned nb_iter){
   for (unsigned it = 1; it <= nb_iter; it++) {
@@ -139,7 +148,7 @@ unsigned compute_v1_openmpfor(unsigned nb_iter){
 }
 
 unsigned compute_v1_openmptask(unsigned nb_iter){
-  for (unsigned it = 1; it <= nb_iter; it++) {
+  for (unsigned it = 1; it <= nb_iter; it++){
 #pragma omp parallel
 #pragma omp single
     for(int i = 0; i < DIM; i+=sizeTiles){
@@ -155,7 +164,7 @@ void task_v1(int i){
   for(int j = 0; j < DIM; j+=sizeTiles){
     for(int x = i; x < i + sizeTiles; x++){
       for(int y = i; y < j + sizeTiles; y++){
-	majImg(i, j, countAlive(i, j));
+	majImg(x, y, countAlive(x, y));
       }
     }
   }
@@ -209,19 +218,49 @@ unsigned compute_v2_openmpfor(unsigned nb_iter){
 	    for(int y = i; y < j + sizeTiles; y++){
 	      majImg(x, y, countAlive(x, y));
 	    }
-	}
+	  }
 	  if(cur_img(i, j) != next_img(i, j)){
-	  tabTilesHaveMoved[i/NBTILES][j/NBTILES] = 1;
+	    tabTilesHaveMoved[i/NBTILES][j/NBTILES] = 1;
 	  }
 	}
       }
     }
-    majTab();
+    majTabOmpFor();
     swap_images();
   }
   return 0; // on ne s'arrête jamais
 }
 
+unsigned compute_v2_openmptask(unsigned nb_iter){
+  for (unsigned it = 1; it <= nb_iter; it++){
+    initTabsTiles();
+#pragma omp parallel
+#pragma omp single
+    for(int i = 0; i < DIM; i+=sizeTiles){
+#pragma omp task
+      task_v2(i);
+    }
+    majTabOmpTask();
+    swap_images();
+  }
+  return 0; // on ne s'arrête jamais
+}
+
+void task_v2(int i){
+  for(int j = 0; j < DIM; j+=sizeTiles){
+    if(tabTilesToMove[i/NBTILES][j/NBTILES]){
+      tabTilesHaveMoved[i/NBTILES][j/NBTILES] = 0;
+      for(int x = i; x < i + sizeTiles; x++){
+	for(int y = i; y < j + sizeTiles; y++){
+	  majImg(x, y, countAlive(x, y));
+	}
+      }
+      if(cur_img(i, j) != next_img(i, j)){
+	tabTilesHaveMoved[i/NBTILES][j/NBTILES] = 1;
+      }
+    }
+  }
+}
 
 ///////////////////////////// Version OpenCL
 
@@ -233,7 +272,7 @@ unsigned compute_v3 (unsigned nb_iter)
 
 unsigned compute_v0_openmpfor(unsigned nb_iter){
   for (unsigned it = 1; it <= nb_iter; it++) {
-#pragma omp for
+#pragma omp parallel for
     for(unsigned i = 0; i < DIM; i++){
       for(unsigned j = 0; j < DIM; j++){
 	majImg(i, j, countAlive(i, j));
@@ -306,8 +345,7 @@ int min(int a, int b){
   return b;
 }
 
-void majTab()
-{
+void majTab(){
   for(int x =0;x<NBTILES;x++){
     for (int y = 0; y<NBTILES;y++){
       tabTilesToMove[x][y]=0;
@@ -316,6 +354,40 @@ void majTab()
 	  tabTilesToMove[x][y] = tabTilesHaveMoved[i][j];
         }
       }
+    }
+  }
+}
+
+void majTabOmpFor(){
+#pragma omp parallel for
+  for(int x =0;x<NBTILES;x++){
+    for (int y = 0; y<NBTILES;y++){
+      tabTilesToMove[x][y]=0;
+      for(int i = max(x-1, 0); i <= min(x+1, NBTILES-1); i++){
+        for(int j = max(y-1, 0); j <= min(y+1, NBTILES-1); j++){
+	  tabTilesToMove[x][y] = tabTilesHaveMoved[i][j];
+        }
+      }
+    }
+  }
+}
+
+void majTabOmpTask(){
+#pragma omp parallel
+#pragma omp single
+  for(int x =0;x<NBTILES;x++){
+    for (int y = 0; y<NBTILES;y++){
+#pragma omp task
+      task_omp_task(x, y);
+    }
+  }
+}
+
+void task_omp_task(int x, int y){
+  tabTilesToMove[x][y]=0;
+  for(int i = max(x-1, 0); i <= min(x+1, NBTILES-1); i++){
+    for(int j = max(y-1, 0); j <= min(y+1, NBTILES-1); j++){
+      tabTilesToMove[x][y] = tabTilesHaveMoved[i][j];
     }
   }
 }
