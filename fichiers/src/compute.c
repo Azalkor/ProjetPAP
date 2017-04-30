@@ -30,6 +30,7 @@ void_func_t first_touch [] = {
   NULL,
   NULL,
   NULL,
+  NULL,
 };
 
 int_func_t compute [] = {
@@ -41,7 +42,8 @@ int_func_t compute [] = {
   compute_v2_openmpfor,
   compute_v1_openmptask,
   compute_v2_openmptask,
-};  //  compute_v3,
+  compute_v3,
+};
 
 char *version_name [] = {
   "Séquentielle de base",
@@ -52,6 +54,7 @@ char *version_name [] = {
   "OpenMP for tuilée (optimisée)",
   "OpenMP task tuilée",
   "OpenMP task tuilée (optimisée)",
+  "OpenCL de base"
 };//  "OpenMP",
 //  "OpenMP zone",
 //  "OpenCL",
@@ -66,6 +69,7 @@ unsigned opencl_used [] = {
   0,
   0,
   0,
+  1
 };
 
 ///////////////////////////// Version séquentielle simple
@@ -85,7 +89,7 @@ void majTabOmpTask();
 void task_omp_task(int x, int y);
 
 unsigned compute_v0 (unsigned nb_iter){
-  for (unsigned it = 1; it <= nb_iter; it++) {
+  for (unsigned it = 1; it <= nb_iter; it++){
     for(unsigned i = 0; i < DIM; i++){
       for(unsigned j = 0; j < DIM; j++){
 	majImg(i, j, countAlive(i, j));
@@ -267,7 +271,7 @@ void task_v2(int i){
 // Renvoie le nombre d'itérations effectuées avant stabilisation, ou 0
 unsigned compute_v3 (unsigned nb_iter)
 {
-  return ocl_compute (nb_iter);
+  return ocl_compute(nb_iter);
 }
 
 unsigned compute_v0_openmpfor(unsigned nb_iter){
