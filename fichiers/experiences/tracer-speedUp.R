@@ -30,15 +30,14 @@ for(i in 1:nbFichiers)
         tmp[,2] = refTime / tmp[,2]  # compute speed up 
         tables[[i]] = aggregate(tmp[,2], tmp[1], mean)
         sdtmp = aggregate(tmp[,2], tmp[1], sd)
-	sdtmp[is.na(sdtmp)] <- 0
-	sdtables[[i]] = sdtmp
+		sdtmp[is.na(sdtmp)] <- 0
+		sdtables[[i]] = sdtmp
         xmax = max(max(tables[[i]][,1]),xmax)
         ymax = max(max(tables[[i]][,2]+ sdtables[[i]][,2]),ymax)
     }
 
 
 pdf("speedup.pdf")
-
 
 plot(1,type='n',xlim=c(0,xmax),ylim=c(0,ymax),xlab='#threads', ylab='speedup')
 
