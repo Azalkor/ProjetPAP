@@ -24,21 +24,19 @@ __kernel void transpose (__global unsigned *in, __global unsigned *out)
 }
 
 
-unsigned const colorViv = 0xFFFF00FF;
-unsigned const colorMort = 0x0;
+#define colorViv 0xFFFF00FF
+#define colorMort 0x0
 
 __kernel void ocl_naif(__global unsigned *in, __global unsigned *out){
   int x = get_global_id(0);
   int y = get_global_id(1);
 
   int nbAlive = 0;
-  for (unsigned it = 1; it <= nb_iter; it++){
-    for(int i = x-1; i <= x+1; i++){
-      for(int j = y-1; j <= y+1; j++){
-	if(i >= 0 && j>= 0){
-	  if(in[j*DIM + i] == colorViv && (i!=x || j!=y)){
-	    nbAlive++;
-	  }
+  for(int i = x-1; i <= x+1; i++){
+    for(int j = y-1; j <= y+1; j++){
+      if(i >= 0 && j>= 0){
+	if(in[j*DIM + i] == colorViv && (i!=x || j!=y)){
+	  nbAlive++;
 	}
       }
     }
@@ -52,16 +50,16 @@ __kernel void ocl_naif(__global unsigned *in, __global unsigned *out){
       out[y*DIM + x] = colorMort;
     }
   }
-  else{
-    if(nbAlive == 3){
-      out[y*DIM + x] = colorViv;
-    }
-    else{
-      out[y*DIM + x] = colorMort;
-    }
-  }
+ else{
+   if(nbAlive == 3){
+     out[y*DIM + x] = colorViv;
+   }
+   else{
+     out[y*DIM + x] = colorMort;
+   } 
+ }
 }
-
+  
 // NE PAS MODIFIER
 static float4 color_scatter (unsigned c)
 {
