@@ -82,11 +82,12 @@ int countAlive(int x, int y);
 void majImg(int i, int j, int nbVoisinsVivants);
 void majTab();
 void initTabsTiles();
+void freeTabsTiles();
 void task_v1(int i);
 void task_v2(int i);
 void majTabOmpFor();
 void majTabOmpTask();
-void task_omp_task(int x, int y);
+void task_omp_task(int x, int y, int i, int imax);
 
 unsigned compute_v0 (unsigned nb_iter){
   for (unsigned it = 1; it <= nb_iter; it++){
@@ -115,7 +116,7 @@ void first_touch_v1 ()
 }
 
 // Renvoie le nombre d'itérations effectuées avant stabilisation, ou 0
-unsigned sizeTiles = 32;
+unsigned sizeTiles = 256;
 #define NBTILES  DIM / sizeTiles
 
 unsigned compute_v1(unsigned nb_iter){
@@ -123,7 +124,7 @@ unsigned compute_v1(unsigned nb_iter){
     for(int i = 0; i < DIM; i+=sizeTiles){
       for(int j = 0; j < DIM; j+=sizeTiles){
 	for(int x = i; x < i + sizeTiles; x++){
-	  for(int y = i; y < j + sizeTiles; y++){
+	  for(int y = j; y < j + sizeTiles; y++){
 	    majImg(x, y, countAlive(x, y));
 	  }
 	}
@@ -140,7 +141,7 @@ unsigned compute_v1_openmpfor(unsigned nb_iter){
     for(int i = 0; i < DIM; i+=sizeTiles){
       for(int j = 0; j < DIM; j+=sizeTiles){
 	for(int x = i; x < i + sizeTiles; x++){
-	  for(int y = i; y < j + sizeTiles; y++){
+	  for(int y = j; y < j + sizeTiles; y++){
 	    majImg(x, y, countAlive(x, y));
 	  }
 	}
@@ -167,7 +168,7 @@ unsigned compute_v1_openmptask(unsigned nb_iter){
 void task_v1(int i){
   for(int j = 0; j < DIM; j+=sizeTiles){
     for(int x = i; x < i + sizeTiles; x++){
-      for(int y = i; y < j + sizeTiles; y++){
+      for(int y = j; y < j + sizeTiles; y++){
 	majImg(x, y, countAlive(x, y));
       }
     }
@@ -187,14 +188,15 @@ int** tabTilesToMove;
 int** tabTilesHaveMoved;
 // Renvoie le nombre d'itérations effectuées avant stabilisation, ou 0
 unsigned compute_v2(unsigned nb_iter){
+	initTabsTiles();
   for (unsigned it = 1; it <= nb_iter; it++) {
-    initTabsTiles();
+    
     for(int i = 0; i < DIM; i+=sizeTiles){
       for(int j = 0; j < DIM; j+=sizeTiles){
 	if(tabTilesToMove[i/NBTILES][j/NBTILES]){
 	  tabTilesHaveMoved[i/NBTILES][j/NBTILES] = 0;
 	  for(int x = i; x < i + sizeTiles; x++){
-	    for(int y = i; y < j + sizeTiles; y++){
+	    for(int y = j; y < j + sizeTiles; y++){
 	      majImg(x, y, countAlive(x, y));
 	    }
 	  }
@@ -207,19 +209,21 @@ unsigned compute_v2(unsigned nb_iter){
     majTab();
     swap_images();
   }
+  freeTabsTiles();
   return 0; // on ne s'arrête jamais
 }
 
 unsigned compute_v2_openmpfor(unsigned nb_iter){
+	initTabsTiles();
   for (unsigned it = 1; it <= nb_iter; it++) {
-    initTabsTiles();
+    
 #pragma omp parallel for 
     for(int i = 0; i < DIM; i+=sizeTiles){
       for(int j = 0; j < DIM; j+=sizeTiles){
 	if(tabTilesToMove[i/NBTILES][j/NBTILES]){
 	  tabTilesHaveMoved[i/NBTILES][j/NBTILES] = 0;
 	  for(int x = i; x < i + sizeTiles; x++){
-	    for(int y = i; y < j + sizeTiles; y++){
+	    for(int y = j; y < j + sizeTiles; y++){
 	      majImg(x, y, countAlive(x, y));
 	    }
 	  }
@@ -236,8 +240,9 @@ unsigned compute_v2_openmpfor(unsigned nb_iter){
 }
 
 unsigned compute_v2_openmptask(unsigned nb_iter){
+	initTabsTiles();
   for (unsigned it = 1; it <= nb_iter; it++){
-    initTabsTiles();
+    
 #pragma omp parallel
 #pragma omp single
     for(int i = 0; i < DIM; i+=sizeTiles){
@@ -255,7 +260,7 @@ void task_v2(int i){
     if(tabTilesToMove[i/NBTILES][j/NBTILES]){
       tabTilesHaveMoved[i/NBTILES][j/NBTILES] = 0;
       for(int x = i; x < i + sizeTiles; x++){
-	for(int y = i; y < j + sizeTiles; y++){
+	for(int y = j; y < j + sizeTiles; y++){
 	  majImg(x, y, countAlive(x, y));
 	}
       }
@@ -299,13 +304,22 @@ void initTabsTiles(){
     }
   }
 }
+
+void freeTabsTiles(){
+  for(int i = 0; i < NBTILES; i++){
+    free(tabTilesToMove[i]);
+    free(tabTilesHaveMoved[i]);
+  }
+  free(tabTilesToMove);
+  free(tabTilesHaveMoved);
+}
   
 int countAlive(int x, int y){
   int cpt = 0;
   for(int i = x-1; i <= x+1; i++){
     for(int j = y-1; j <= y+1; j++){
       if(i >= 0 && j>= 0){
-	if(cur_img(i, j) == colorViv && (i!=x || j!=y)){
+	if((i!=x || j!=y) && cur_img(i, j) == colorViv){
 	  cpt++;
 	}
       }
@@ -350,11 +364,31 @@ int min(int a, int b){
 }
 
 void majTab(){
+	int i;
+	int imax;
+	int j;
+	int jmax;
   for(int x =0;x<NBTILES;x++){
+	  if(x==0)
+		i=0;
+	else
+		i=x;
+	if(x==NBTILES-1)
+		imax=NBTILES-1;
+	else
+		imax=x+1;
     for (int y = 0; y<NBTILES;y++){
+		if(y==0)
+			j=0;
+		else
+			j=y;
+		if(y==NBTILES-1)
+			jmax=NBTILES-1;
+		else
+			jmax=y+1;
       tabTilesToMove[x][y]=0;
-      for(int i = max(x-1, 0); i <= min(x+1, NBTILES-1); i++){
-        for(int j = max(y-1, 0); j <= min(y+1, NBTILES-1); j++){
+      for(; i <= imax; i++){
+        for(; j <= jmax; j++){
 	  tabTilesToMove[x][y] = tabTilesHaveMoved[i][j];
         }
       }
@@ -363,12 +397,32 @@ void majTab(){
 }
 
 void majTabOmpFor(){
-#pragma omp parallel for
+	int i;
+	int imax;
+	int j;
+	int jmax;
+	//#pragma omp parallel for
   for(int x =0;x<NBTILES;x++){
+	  if(x==0)
+		i=0;
+	else
+		i=x;
+	if(x==NBTILES-1)
+		imax=NBTILES-1;
+	else
+		imax=x+1;
     for (int y = 0; y<NBTILES;y++){
+		if(y==0)
+			j=0;
+		else
+			j=y;
+		if(y==NBTILES-1)
+			jmax=NBTILES-1;
+		else
+			jmax=y+1;
       tabTilesToMove[x][y]=0;
-      for(int i = max(x-1, 0); i <= min(x+1, NBTILES-1); i++){
-        for(int j = max(y-1, 0); j <= min(y+1, NBTILES-1); j++){
+      for(; i <= imax; i++){
+        for(; j <= jmax; j++){
 	  tabTilesToMove[x][y] = tabTilesHaveMoved[i][j];
         }
       }
@@ -377,20 +431,26 @@ void majTabOmpFor(){
 }
 
 void majTabOmpTask(){
+	int i;
+	int imax;
 #pragma omp parallel
 #pragma omp single
   for(int x =0;x<NBTILES;x++){
+	  i = max(x-1, 0);
+      imax = min(x+1, NBTILES-1);
     for (int y = 0; y<NBTILES;y++){
 #pragma omp task
-      task_omp_task(x, y);
+      task_omp_task(x, y,i,imax);
     }
   }
 }
 
-void task_omp_task(int x, int y){
+void task_omp_task(int x, int y, int i, int imax){
+	int j=max(y-1,0);
+	int jmax = min(y+1,NBTILES-1);
   tabTilesToMove[x][y]=0;
-  for(int i = max(x-1, 0); i <= min(x+1, NBTILES-1); i++){
-    for(int j = max(y-1, 0); j <= min(y+1, NBTILES-1); j++){
+  for(; i <= imax; i++){
+    for(; j <= jmax; j++){
       tabTilesToMove[x][y] = tabTilesHaveMoved[i][j];
     }
   }
